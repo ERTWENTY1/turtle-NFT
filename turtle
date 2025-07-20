@@ -1,0 +1,97 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+
+contract TurtleNFT is ERC721, ERC721URIStorage, Ownable {
+    using Counters for Counters.Counter;
+    Counters.Counter private _tokenIdCounter;
+
+    // Struct to store Turtle attributes
+    struct Turtle {
+        string name;
+        string shellPattern;
+        uint256 age; // Age in years
+    }
+
+    // Mapping from token ID to Turtle attributes
+    mapping(uint256 => Turtle) public turtles;
+
+    // Base URI for metadata
+    string private _baseTokenURI;
+
+    constructor(string memory baseURI) ERC721("TurtleNFT", "TNFT") Ownable(msg.sender) {
+        _baseTokenURI = baseURI;
+    }
+
+    // Mint a new Turtle NFT
+    function mintTurtle(
+        address to,
+        string memory name,
+        string memory shellPattern,
+        uint256 age,
+        string memory tokenURI
+    ) public onlyOwner returns (uint256) {
+        require(age <= 150, "Age must be 150 or less"); // Reasonable limit for turtle age
+        _tokenIdCounter.increment();
+        uint256 newTokenId = _tokenIdCounter.current();
+
+        _safeMint(to, newTokenId);
+        _setTokenURI(newTokenId, tokenURI);
+
+        turtles[newTokenId] = Turtle(name, shellPattern, age);
+
+        return newTokenId;
+    }
+
+    // Override tokenURI to return metadata
+    function tokenURI(uint256 tokenId)
+        public
+        view
+        override(ERC721, ERC721URIStorage)
+        returns (string memory)
+    {
+        return super.tokenURI(tokenId);
+    }
+
+    // Set base URI for metadata
+    function setBaseURI(string memory baseURI) public onlyOwner {
+        _baseTokenURI = baseURI;
+    }
+
+    // Get base URI
+    function _baseURI() internal view override returns (string memory) {
+        return _baseTokenURI;
+    }
+
+    // Get Turtle attributes
+    function getTurtle(uint256 tokenId)
+        public
+        view
+        returns (string memory name, string memory shellPattern, uint256 age)
+    {
+        require(_exists(tokenId), "Token does not exist");
+        Turtle memory turtle = turtles[tokenId];
+        return (turtle.name, turtle.shellPattern, turtle.age);
+    }
+
+    // Override supportsInterface for ERC721URIStorage
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721, ERC721URIStorage)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
+    }
+
+    // Burn function (optional, for destroying tokens)
+    function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
+        super._burn(tokenId);
+        delete turtles[tokenId];
+    }
+}
